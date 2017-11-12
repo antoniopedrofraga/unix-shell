@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #define BUFSIZE 1024
 #define TOK_DELIM " \t\r\n\a"
@@ -71,7 +73,24 @@ char ** split_line(char * line) {
 }
 
 int execute(char ** args) {
+	pid_t pid, wpid;
+	int status;
 
+	pid = fork();
+
+	if (pid == 0) {
+		if (execvp(args[0], args) == -1) {
+	    	perror("shell");
+	    }
+	    exit(EXIT_FAILURE);
+	} else if (pid < 0) {
+		perror("shell");
+	} else {
+		do {
+			wpid = waitpid(pid, &status, WUNTRACED);
+		} while(!WIFEXITED(status) && !WIFSIGNALED(status));
+	}
+	return 1;
 }
 
 void shell_loop() {
@@ -83,7 +102,7 @@ void shell_loop() {
 		printf("> ");
 		line = read_line();
 		args = split_line(line);
-		//status = execute(args);*/
+		status = execute(args);
 
 		free(line);
 		free(args);
